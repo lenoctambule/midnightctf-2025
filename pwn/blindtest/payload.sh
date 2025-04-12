@@ -1,0 +1,1 @@
+flag=$(</home/blind_test/chall/flag.txt)
