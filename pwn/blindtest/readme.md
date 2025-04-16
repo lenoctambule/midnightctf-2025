@@ -27,22 +27,31 @@ We can also extract the seccomp using [`seccomp-tools`](https://github.com/david
  0008: 0x06 0x00 0x00 0x00000000  return KILL
 ```
 
-Then it takes an 3000 characters long input and calls `system` function with that.
+Then it takes a 3000 characters long input and calls `system` function with it.
+
+```c
+    while (1) {
+        if (fgets(command, sizeof(command), stdin) == NULL) {
+            break;
+        }
+        system(command);
+    }
+```
 
 ## Exploitation
 
-As expected, whenever we send a command, we get nothing back. Looking at the different `syscall`, there are a few that could performs the same task as `write` such as :
+As expected, whenever we send a command, we get nothing back. Looking at the different avalaible syscalls, there are a few that could performs the same task as `write` such as :
 - `pwrite64` - write to a file descriptor at a given offset
 - `writev` - write data into multiple buffers
 
-We could use the first to write malicious code onto the filesystem and then execute it. But `writev` seems a lot easier because remember all we need is the flag.
+But `writev` seems a lot easier because `pwrite64` can't write to stdout (which is what we want).
 
 So our plan is now clear :
 - open the flag and get the file descriptor
 - read the flag
 - use `writev` to execute it
 
-However, the executions is not. We need something that allows to do all of the above that is already installed on the debian container. And after, spending a bit of time looking around, I found that perl is installed and perl does allows us to make syscalls using well `syscall`. As I'm not good in perl and time is of essence, I asked ChatGPT to do it for me and here's the payload that I got :
+However, the execution is not. We need something that allows to do all of the above and that is already installed on the debian container. And after spending a bit of time looking around, I found that perl is installed and perl does allows us to make syscalls using well ... `syscall`. As I'm not good in perl and time is of essence, I asked ChatGPT to do it for me and here's the payload that I got :
 
 ```pl
 open my $fh, "<", "./flag.txt";
@@ -65,7 +74,7 @@ And the python script to send it automatically while getting rid of line returns
 ```py
 from pwn import *
 
-r = remote("chall4.midnightflag.fr", 14970)
+r = remote("xxxx.midnightflag.fr", xxxxx)
 context.log_level = 'INFO'
 with open('payload.pl', 'r') as f :
     payload = f.read().strip().replace('\n', '')
